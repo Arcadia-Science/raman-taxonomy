@@ -4,15 +4,14 @@ library(gplots)
 library(plotrix)
 library(RColorBrewer)
 library(lsa)
-source('~/Documents/Research/github/arcadia-color-brewer/R code/arcadia.pal.R')
+
+setwd('/Users/ryanyork/Documents/Research/github/raman-taxonomy/')
+source('01_utils/R/arcadia.pal.R')
 np <- import("numpy")
 
 #############################
 #####Load and clean data#####
 #############################
-#Set working directory
-setwd('/Users/ryanyork/Documents/Research/github/raman-taxonomy/00_data/')
-
 #Load Ho et al. 2019 data
 x = np$load('ho_et_al_2019/data/X_finetune.npy')
 y = np$load('ho_et_al_2019/data/y_finetune.npy')
