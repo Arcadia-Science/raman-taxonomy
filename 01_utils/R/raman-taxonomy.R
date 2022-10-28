@@ -8,10 +8,9 @@ library(ape)
 library(phytools)
 library(phylosignal)
 library(scales)
+library(ArcadiaColorBrewer)
 
 setwd('/Users/ryanyork/Documents/Research/github/raman-taxonomy/')
-source('01_utils/R/arcadia.pal.R')
-source('01_utils/R/darken_color.R')
 np <- import("numpy")
 
 #############################
@@ -21,14 +20,20 @@ np <- import("numpy")
 x = np$load('00_data/ho_et_al_2019/X_finetune.npy')
 y = np$load('00_data/ho_et_al_2019/y_finetune.npy')
 
+#Reverse
+x = x[,ncol(x):1]
+
 #Load config (contains strain name info, etc.)
-config = source_python('ho_et_al_2019/config.py')
+config = source_python('00_data/ho_et_al_2019/config.py')
 
 #Get names by ordering strains (have to +1 order since its 0 indexed as in python; R wants to start with 1)
 n = unlist(STRAINS)
 
 #Load taxonomic groups
 taxa = read.csv('00_data/ho_et_al_2019/taxonomic_groups.csv')
+
+#Load wavenumbers
+wav = rev(np$load('00_data/ho_et_al_2019/wavenumbers.npy'))
 
 #Calculate strain means
 m = lapply(split(as.data.frame(x), y), function(z) colMeans(z))
@@ -131,16 +136,37 @@ plot(cumsum((pca$sdev)^2/sum(((pca$sdev)^2)))[1:100]*100,
      ylim = c(0,100))
 
 #Plot
+pred = as.data.frame(cbind(apply(taxa, 2, function(x) rep(x, each = 100))))
+cols = WGCNA::standardColors(length(unique(pred$Strain)))
+#cols = c(arcadia.pal(n = 6, name = 'Accent'), arcadia.pal(n = 6, name = 'Lighter_accents'))[1:length(unique(taxa$Genus))]
+#names(cols) = unique(taxa$Genus)
+names(cols) = unique(pred$Strain)
+#cols = cols[match(pred$Genus, names(cols))]
+cols = cols[match(pred$Strain, names(cols))]
+
 par(mfrow = c(1,3))
-plot(pca$x[,1:2])
-plot(pca$x[,2:3])
-plot(pca$x[,3:4])
+plot(pca$x[,1:2], pch = 20, col = cols, cex = 0.5)
+plot(pca$x[,2:3], pch = 20, col = cols, cex = 0.5)
+plot(pca$x[,3:4], pch = 20, col = cols, cex = 0.5)
 
 #UMAP on all data
 u_all = umap(x, verbose = TRUE)
 
+#Plot
+plot(u_all$layout, 
+     pch = 20, 
+     col = cols, 
+     cex = 0.5,
+     xlab = 'Dim 1',
+     ylab = 'Dim 2',
+     cex.axis = 1.5, 
+     cex.lab = 1.5)
+
 #UMAP on means
 u_means = umap(m, verbose = TRUE)
+
+#ICA
+ica_res = ica::ica(m, nc = 10)
 
 #####################################################
 #####GLMs on PCs comparing taxonomy as predictor#####
@@ -293,7 +319,105 @@ plot(obj,
      link.col=make.transparent("grey",0.7))
 
 #Phylogenetic signal of PCs
-phylosig_pcs = apply(pca$x[match(phylo$tip.label, rownames(pca$x)),], 2, function(x) phylosig(phylo, x))
+phylosig_pcs = apply(pca$x[match(phylo$tip.label, rownames(pca$x)),], 2, function(x) phylosig(phylo, x, test = TRUE))
 
 #Phylogenetic signal of spectra
 phylosig_spectra = apply(m2[match(phylo$tip.label, rownames(m2)),], 2, function(x) phylosig(phylo, x))
+
+#####################################
+#####Plot phylogeny with spectra#####
+#####################################
+#Plot phylogeny
+plot(phylo)
+
+##Plot spectra
+#Order
+ord = rev(phylo$tip.label)
+
+#Get colors (to color by family)
+g = unlist(lapply(strsplit(ord, '_'), function(x) x[1]))
+cols = c(arcadia.pal(n = 6, name = 'Accent'), arcadia.pal(n = 6, name = 'Lighter_accents'))[1:length(unique(g))]
+names(cols) = unique(g)
+cols = cols[match(g, names(cols))]
+
+#Set up plot
+par(mfrow = c(length(ord),1), mar = c(0.25, 0.25, 0.25, 0.25))
+
+#Loop through and plot
+for(i in 1:length(ord)){
+  
+  #Extract spectra
+  tmp = x[grep(ord[i], paste(pred$Genus, pred$Species, sep = '_')),]
+  
+  #Initiate plot
+  plot(tmp[1,], col = alpha(cols[i], 0.05), type = 'l', bty = 'n', xaxt = 'n', yaxt = 'n', xlab = '', ylab = '')
+  
+  #Add lines
+  for(j in 2:nrow(tmp)){
+    lines(tmp[j,], col = alpha(cols[i], 0.05))
+  }
+  
+  #Add mean
+  lines(m2[grep(ord[i], rownames(m2)),], lwd = 2, col = darken_color(cols[i], factor = 2))
+  
+  #Add label
+  #title(main = ord[i], font.main = 1)
+  
+}
+
+########################################
+#####Compare spectra to genome size#####
+########################################
+#Load genome sizes
+size = read.csv('00_data/ho_et_al_2019/ho_2019_genome_statistics.csv')
+
+#Match genome size matrix to order of spectral data
+size = size[match(rownames(pca$x), gsub(' ', '_', size$Genome)),]
+
+#Calculate pca
+pca = prcomp(m2)
+
+#Linear model
+summary(lm(pca$x[,2]~size$media_gc_content+size$median_genome_size+size$median_protein_count))
+
+#By wavenumber
+par(mfrow = c(1,3))
+n = c(78, which(round(wav)%in% seq(500, 1750, 250)))
+plot(apply(m2, 2, function(x) cor(x, size$median_genome_size)),
+     type = 'l',
+     xaxt = 'n',
+     ylab = 'Correlation coeff.',
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     xlab = 'Wavenumber',
+     ylim = c(-1,1))
+title(main = 'Genome size', font.main = 1, cex.main = 1.5)
+axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
+
+plot(apply(m2, 2, function(x) cor(x, size$median_protein_count)),
+     type = 'l',
+     xaxt = 'n',
+     ylab = 'Correlation coeff.',
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     xlab = 'Wavenumber',
+     ylim = c(-1,1))
+title(main = 'Protein count', font.main = 1, cex.main = 1.5)
+axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
+
+plot(apply(m2, 2, function(x) cor(x, size$media_gc_content)),
+     type = 'l',
+     xaxt = 'n',
+     ylab = 'Correlation coeff.',
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     xlab = 'Wavenumber',
+     ylim = c(-1,1))
+title(main = 'GC %', font.main = 1, cex.main = 1.5)
+axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
+
+
+
+
+
+
