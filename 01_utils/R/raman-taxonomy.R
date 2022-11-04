@@ -1,17 +1,30 @@
-library(reticulate)
-library(umap)
-library(gplots)
-library(plotrix)
-library(RColorBrewer)
-library(lsa)
-library(ape)
-library(phytools)
-library(phylosignal)
-library(scales)
-library(ArcadiaColorBrewer)
+##TO DO:
+#All by all comparisons between species using binned phylogenetic signal -> compare distance between species as a function of tree time (x vs y)
+#Calculate phylogenetic signal using windows of each spectra e.g. 50 wavenumbers per window (can do both mean per window and/or pca on each window)
+#Try removing S. agalactiae
+#Plot phylosig via spectra alongside mean species traces
 
+#Set working directory
 setwd('/Users/ryanyork/Documents/Research/github/raman-taxonomy/')
-np <- import("numpy")
+
+#Source utilities
+source('01_utils/R/raman-taxonomy-utils.R')
+
+###################################################
+#####Load reference bio molecule spectral data#####
+###################################################
+##Downloaded from https://www.raman.ugent.be/reference-database-raman-spectra-biological-molecules-0
+#List .spc files to load
+files = list.files('00_data/degelder_et_al_2007/spcs/')
+
+#Create empty list to load into
+spcs = list()
+
+#Loop through and load
+for(i in 1:length(files)){
+  spcs[[gsub('.spc', '', files[i])]] = find_spectral_peaks(paste('00_data/degelder_et_al_2007/spcs/', files[i], sep = ''),
+                                                           plot = TRUE)
+}
 
 #############################
 #####Load and clean data#####
@@ -191,10 +204,12 @@ bics = lapply(mods, function(x) BIC(x))
 bics = sort(unlist(bics))
 
 o = order(bics)
-cols = c(arcadia.pal(n = 6, name = 'Accent'), arcadia.pal(n = 6, name = 'Lighter_accents'))[1:length(bics)]
+names(cols) = c('Strain', 'Species', 'Genus', 'Family', 'Order', 'Class', 'Division', 'Domain')
+cols = cols[match(names(nic[o]), names(cols))]
+cols = c(cols[1], 'black', cols[2:length(cols)])
 plot(bics[o],
      pch = 20,
-     cex = 2,
+     cex = 3,
      col = cols,
      ylab = 'BIC',
      xlab = '',
@@ -215,7 +230,7 @@ hist(unlist(as.data.frame(d)))
 
 #Compare taxonomic units
 res = list()
-for(i in 1:(ncol(pred)-1)){
+for(i in 1:(ncol(pred))){
   
   tmp = split(as.data.frame(d), pred[,i])
   for(j in 1:length(tmp)){
@@ -232,9 +247,11 @@ se1 = unlist(lapply(res, function(y) plotrix::std.error(y)))
 
 o = order(m1, decreasing = TRUE)
 cols = c(arcadia.pal(n = 6, name = 'Accent'), arcadia.pal(n = 6, name = 'Lighter_accents'))[1:length(m1)]
+names(cols) = c('Strain', 'Species', 'Genus', 'Family', 'Order', 'Class', 'Division', 'Domain')
+cols = cols[match(names(m1[o]), names(cols))]
 plot(m1[o],
      pch = 20,
-     cex = 2,
+     cex = 3,
      col = cols,
      ylim = c(0.92, 0.97),
      ylab = 'Cosine similarity',
@@ -245,7 +262,7 @@ plot(m1[o],
      bty = 'n')
 axis(1, 1:length(m1), names(m1)[o], cex.axis = 1.5, las = 2)
 for(i in 1:length(se1)){
-  segments(i, m1[o][i]-se1[o][i], i, m1[o][i]+se1[o][i], col = cols[i], lwd = 1.5)
+  segments(i, m1[o][i]-se1[o][i], i, m1[o][i]+se1[o][i], col = cols[i], lwd = 2)
 }
 
 #####################################
@@ -281,6 +298,7 @@ image(res)
 ##################################
 #Load phylogeny
 phylo = read.newick('00_data/ho_et_al_2019/ho_2019_species_list_for_timetree.nwk')
+phylo = drop.tip(phylo, 'Streptococcus_agalactiae')
 
 #Generate matrix for calculate means by species
 m2 = m
@@ -294,6 +312,7 @@ m2 = lapply(m2, function(x) colMeans(x))
 
 #Recombine
 m2 = do.call(rbind, m2)
+m2 = m2[!rownames(m2) == 'Streptococcus_agalactiae',]
 
 #Generate phylogeny from spectra
 spectra = as.phylo(nj(dist(m2)))
@@ -318,11 +337,131 @@ plot(obj,
      link.lwd=2,
      link.col=make.transparent("grey",0.7))
 
+#Distance between trees
+TreeDistance(phylo, spectra)
+
 #Phylogenetic signal of PCs
-phylosig_pcs = apply(pca$x[match(phylo$tip.label, rownames(pca$x)),], 2, function(x) phylosig(phylo, x, test = TRUE))
+phylosig_pcs = apply(pca$x[match(phylo$tip.label, rownames(pca$x)),], 2, function(x) phylosig(phylo, x, method = 'lambda')[1]$lambda)
 
 #Phylogenetic signal of spectra
-phylosig_spectra = apply(m2[match(phylo$tip.label, rownames(m2)),], 2, function(x) phylosig(phylo, x))
+phylosig_spectra = apply(m2[match(phylo$tip.label, rownames(m2)),], 2, function(x) phylosig(phylo, x, method = 'lambda')[1]$lambda)
+
+#By windows
+len = 100
+win = split_with_overlap(t(m2), len, len-1)[1:(ncol(m2)-len)]
+win_phy = list()
+for(i in 1:length(win)){
+  p = prcomp(t(win[[i]]))
+  p = p$x[match(phylo$tip.label, rownames(p$x)),2]
+  
+  mn = colMeans(win[[i]])
+  mn = phylosig(phylo, mn, method = 'lambda')[1]$lambda
+  p = phylosig(phylo, p, method = 'lambda')[1]$lambda
+  l = list(mn, p)
+  names(l) = c('mean', 'pca')
+  win_phy[[as.character(i)]] = l
+}
+
+pc = unlist(lapply(win_phy, function(x) x$pca))
+mn = unlist(lapply(win_phy, function(x) x$mean))
+
+#Plot
+#Set up plot
+par(mfrow = c(2,1))
+
+n = c(78, which(round(wav)%in% seq(500, 1750, 250)))
+plot(phylosig_spectra,
+     type = 'l',
+     xaxt = 'n',
+     ylab = 'Phylogenetic signal',
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     bty = 'n',
+     xlab = 'Wavenumber',
+     ylim = c(0,1))
+axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
+
+#Order
+ord = rev(phylo$tip.label)
+
+#Get colors (to color by family)
+g = unlist(lapply(strsplit(ord, '_'), function(x) x[1]))
+cols = c(arcadia.pal(n = 6, name = 'Accent'), arcadia.pal(n = 6, name = 'Lighter_accents'))[1:length(unique(g))]
+names(cols) = unique(g)
+cols = cols[match(g, names(cols))]
+
+#Extract spectra
+tmp = x[grep(ord[1], paste(pred$Genus, pred$Species, sep = '_')),]
+
+#Initiate plot
+plot(tmp[1,][1:length(phylosig_spectra)], 
+     col = alpha(cols[1], 0.05), 
+     type = 'l', 
+     bty = 'n', 
+     xaxt = 'n', 
+     yaxt = 'n', 
+     cex.axis = 1.5,
+     xlab = 'Wavenumber', 
+     ylab = '')
+
+#Loop through and plot
+for(i in 2:length(ord)){
+  
+  #Extract spectra
+  tmp = x[grep(ord[i], paste(pred$Genus, pred$Species, sep = '_')),]
+  
+  #Add mean
+  lines(m2[grep(ord[i], rownames(m2)),][1:length(phylosig_spectra)], lwd = 2, col = darken_color(cols[i], factor = 2))
+}
+axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
+
+#################################################################
+#####Comparing phylogenetic distance and phenotypic distance#####
+#################################################################
+#Calculate cophenic distances
+cophen = cophenetic.phylo(phylo)
+
+#Convert to three column matrix
+cophen = as.data.frame(as.table(cophen))
+
+#Calculate cosine similarity
+d = cosine(t(m2))
+d = as.data.frame(as.table(d))
+
+#Calculate by time
+cophen_time = list()
+for(i in 0:round(max(cophen$Freq))){
+  
+  #Filter on cophenetic distances
+  z = d[which(cophen$Freq>=i),]
+  
+  #Remove self comparisons
+  z = z[!z[,1] == z[,2],]
+  
+  #Add to list
+  cophen_time[[as.character(i)]] = z
+}
+
+#Calculate mean
+p_mean = unlist(lapply(cophen_time, function(x) mean(x$Freq)))
+p_se = unlist(lapply(cophen_time, function(x) std.error(x$Freq)))
+
+psd<-p_mean+p_se
+nsd<-p_mean-p_se
+
+#Plot
+plot(1:length(p_mean),
+     p_mean,
+     type = 'l',
+     ylab = 'Spectral similarity',
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     xaxt = 'n',
+     bty = 'n',
+     lwd = 1.5,
+     xlab = 'Million years')
+polygon(x=c(p_mean, rev(p_mean)), y=c(psd, rev(nsd)), col="lightblue", density = 40, angle=90)
+axis(1, )
 
 #####################################
 #####Plot phylogeny with spectra#####
@@ -416,8 +555,68 @@ plot(apply(m2, 2, function(x) cor(x, size$media_gc_content)),
 title(main = 'GC %', font.main = 1, cex.main = 1.5)
 axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
 
+#Compare to phylogenetic signal
+par(mfrow = c(2,1))
+
+plot(apply(m2, 2, function(x) cor(x, size$media_gc_content)),
+     type = 'l',
+     xaxt = 'n',
+     ylab = 'Correlation coeff.',
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     xlab = 'Wavenumber',
+     ylim = c(-1,1))
+title(main = 'Genome size', font.main = 1, cex.main = 1.5)
+axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
+
+plot(wav, phylosig_spectra, type = 'l')
+
+cor(apply(m2, 2, function(x) cor(x, size$median_protein_count)), 
+    phylosig_spectra)
+
+################################################################
+#####Comparing bio molecule spectra to phylogenetic results#####
+################################################################
+#Associate phylogenetic signal 'peaks' with bio molecules
+p = pracma::findpeaks(phylosig_spectra, minpeakheight = 0.2, minpeakdistance = 10)
+p = p[order(p[,2]),]
+
+#Plot
+plot(phylosig_spectra, type = 'l')
+points(p[,2], p[,1], pch = 20, col = 'red')
+
+#Find closest peaks to each 
+mol_peaks = list()
+for(i in 1:nrow(p)){
+  r = list()
+  for(j in 1:length(spcs)){
+    z = spcs[[j]][abs(p[i,2]-spcs[[j]]$peak)<=10,]
+    if(nrow(z)>0){
+      r[[names(spcs)[j]]] = z
+    }
+  }
+  if(length(r)>0){
+    r = do.call(rbind, r)
+    r = r[order(r$intensity, decreasing = TRUE),]
+    mol_peaks[[as.character(wav[p[i,2]])]] = r
+  }
+}
+
+##Get windows corresponding to phylogenetic signal 'peaks'
+#Split into peak 'windows'
+x = which(abs(diff(phylosig_spectra))>0)
+idx <- c(0, cumsum(abs(diff(x)) > 1))
+z = split(x, idx)
+
+#Filter on size
+z = z[lapply(z, function(x) length(x))>10]
+
+#Convert to wave number
+z = lapply(z, function(x) round(wav[x]))
 
 
+
+#Split wavenumbers on
 
 
 
