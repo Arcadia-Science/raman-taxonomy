@@ -26,6 +26,12 @@ for(i in 1:length(files)){
                                                            plot = TRUE)
 }
 
+#Scale, if desired
+spcs_s = spcs
+for(i in 1:length(spcs_s)){
+  spcs_s[[i]]$intensity = scale(spcs_s[[i]]$intensity)  
+}
+
 #############################
 #####Load and clean data#####
 #############################
@@ -59,6 +65,10 @@ se = lapply(split(as.data.frame(x), y), function(z){
 })
 se = do.call(rbind, se)
 rownames(se) = n
+
+#Save 
+saveRDS(se, '01_utils/ho_et_al_spectra_se.RDS')
+saveRDS(m, '01_utils/ho_et_al_spectra_means.RDS')
 
 ######################
 #####Plot spectra#####
@@ -381,6 +391,17 @@ plot(phylosig_spectra,
      ylim = c(0,1))
 axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
 
+#Variance
+plot(apply(m2, 2, function(x) sd(x)),
+     type = 'l',
+     xaxt = 'n',
+     ylab = 'Standard deviation',
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     bty = 'n',
+     xlab = 'Wavenumber')
+axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
+
 #Order
 ord = rev(phylo$tip.label)
 
@@ -424,6 +445,10 @@ cophen = cophenetic.phylo(phylo)
 #Convert to three column matrix
 cophen = as.data.frame(as.table(cophen))
 
+#Standardize to mya
+a = max(cophen$Freq)/max(phylo$edge.length)
+cophen$Freq = cophen$Freq/a
+
 #Calculate cosine similarity
 d = cosine(t(m2))
 d = as.data.frame(as.table(d))
@@ -459,9 +484,52 @@ plot(1:length(p_mean),
      xaxt = 'n',
      bty = 'n',
      lwd = 1.5,
-     xlab = 'Million years')
-polygon(x=c(p_mean, rev(p_mean)), y=c(psd, rev(nsd)), col="lightblue", density = 40, angle=90)
-axis(1, )
+     xlab = 'Million years ago')
+axis(1, at = c(1, seq(500, 3500, 500))+36, labels = rev(seq(0, 3.5, 0.5)), cex.axis = 1.5)
+
+##By window
+d_win = list()
+step = 50
+for(i in seq(1, 1000-step, step)){
+  
+  #Calculate cosine distance
+  d = as.data.frame(as.table(cosine(t(m2[,i:(i+step)]))))
+  
+  phen = list()
+  for(j in 0:round(max(cophen$Freq))){
+    
+    #Filter on cophenetic distances
+    z = d[which(cophen$Freq>=j),]
+    
+    #Remove self comparisons
+    z = z[!z[,1] == z[,2],]
+      
+    #Add to list
+    phen[[as.character(j)]] = z
+  }
+
+  #Add to list
+  d_win[[as.character(i)]] = unlist(lapply(phen, function(x) mean(x$Freq)))
+}
+
+z = do.call(rbind, lapply(d_win, function(x) unlist(x)))
+me = colMeans(z)
+se = apply(z, 2, function(x) std.error(x))
+
+plot(1:length(me),
+     me,
+     ylab = 'Spectral similarity',
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     xaxt = 'n',
+     bty = 'n',
+     ylim = c(0.99,1),
+     xlab = 'Million years',
+     type = 'n')
+lines(me+se, lty = 2, col = 'grey70', lwd = 1.5)
+lines(me-se, lty = 2, col = 'grey70', lwd = 1.5)
+lines(me, lwd = 2)
+axis(1, at = c(1, seq(500, 3500, 500))+36, labels = rev(seq(0, 3.5, 0.5)), cex.axis = 1.5)
 
 #####################################
 #####Plot phylogeny with spectra#####
@@ -525,7 +593,7 @@ n = c(78, which(round(wav)%in% seq(500, 1750, 250)))
 plot(apply(m2, 2, function(x) cor(x, size$median_genome_size)),
      type = 'l',
      xaxt = 'n',
-     ylab = 'Correlation coeff.',
+     ylab = 'Correlation coefficient',
      cex.axis = 1.5,
      cex.lab = 1.5,
      xlab = 'Wavenumber',
@@ -536,7 +604,7 @@ axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
 plot(apply(m2, 2, function(x) cor(x, size$median_protein_count)),
      type = 'l',
      xaxt = 'n',
-     ylab = 'Correlation coeff.',
+     ylab = 'Correlation coefficient',
      cex.axis = 1.5,
      cex.lab = 1.5,
      xlab = 'Wavenumber',
@@ -547,7 +615,7 @@ axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
 plot(apply(m2, 2, function(x) cor(x, size$media_gc_content)),
      type = 'l',
      xaxt = 'n',
-     ylab = 'Correlation coeff.',
+     ylab = 'Correlation coefficient',
      cex.axis = 1.5,
      cex.lab = 1.5,
      xlab = 'Wavenumber',
@@ -556,23 +624,14 @@ title(main = 'GC %', font.main = 1, cex.main = 1.5)
 axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
 
 #Compare to phylogenetic signal
-par(mfrow = c(2,1))
+v = apply(m2, 2, function(x) sd(x))
+mg = apply(m2, 2, function(x) minerva::mine(x, size$median_genome_size)$MIC)
+mp = apply(m2, 2, function(x) minerva::mine(x, size$median_protein_count)$MIC)
+gc = apply(m2, 2, function(x) minerva::mine(x, size$media_gc_content)$MIC)
 
-plot(apply(m2, 2, function(x) cor(x, size$media_gc_content)),
-     type = 'l',
-     xaxt = 'n',
-     ylab = 'Correlation coeff.',
-     cex.axis = 1.5,
-     cex.lab = 1.5,
-     xlab = 'Wavenumber',
-     ylim = c(-1,1))
-title(main = 'Genome size', font.main = 1, cex.main = 1.5)
-axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
+minerva::mine(phylosig_spectra, mp)
 
-plot(wav, phylosig_spectra, type = 'l')
-
-cor(apply(m2, 2, function(x) cor(x, size$median_protein_count)), 
-    phylosig_spectra)
+mod = lm(phylosig_spectra~v+mg+mp+gc)
 
 ################################################################
 #####Comparing bio molecule spectra to phylogenetic results#####
@@ -590,7 +649,7 @@ mol_peaks = list()
 for(i in 1:nrow(p)){
   r = list()
   for(j in 1:length(spcs)){
-    z = spcs[[j]][abs(p[i,2]-spcs[[j]]$peak)<=10,]
+    z = spcs_s[[j]][abs(p[i,2]-spcs_s[[j]]$peak)<=2,]
     if(nrow(z)>0){
       r[[names(spcs)[j]]] = z
     }
@@ -598,6 +657,7 @@ for(i in 1:nrow(p)){
   if(length(r)>0){
     r = do.call(rbind, r)
     r = r[order(r$intensity, decreasing = TRUE),]
+    r$peak_wav = wav[r$peak]
     mol_peaks[[as.character(wav[p[i,2]])]] = r
   }
 }
@@ -609,14 +669,65 @@ idx <- c(0, cumsum(abs(diff(x)) > 1))
 z = split(x, idx)
 
 #Filter on size
-z = z[lapply(z, function(x) length(x))>10]
+z = z[lapply(z, function(x) length(x))>4]
 
 #Convert to wave number
 z = lapply(z, function(x) round(wav[x]))
 
+#Find intersections with bio molecule peaks
+s = do.call(rbind, spcs_s)
+res = list()
+for(i in 1:length(z)){
+  fishers = list()
+  for(j in 1:length(spcs)){
+    
+    b = s[s$peak%in%z[[i]],]
+    b = b[order(b$intensity, decreasing = TRUE),]
+    
+    a = s[-grep(names(spcs)[j], rownames(s)),]
+    
+    x = sum(spcs[[j]]$peak%in%z[[i]])
+    y = sum(!spcs[[j]]$peak%in%z[[i]])
+    
+    m = sum(a$peak%in%z[[i]])
+    n = sum(!a$peak%in%z[[i]])
+    
+    f = fisher.test(as.matrix(cbind(c(x,y), c(m,n))))
+    fishers[[names(spcs)[j]]] = f
+  }
+  l = list(fishers, b)
+  names(l) = c('fishers', 'peaks')
+  res[[names(z)[i]]] = l
+}
 
+#Extract results
+out = list()
+#for(i in 1:length(res)){
+#  if(nrow(res[[i]]$peaks)>=5){
+#    out[[i]] = res[[i]]$peaks[1:5,]
+#  }else{
+#    out[[i]] = res[[i]]$peaks
+#  }
+#}
+out = do.call(rbind, lapply(res, function(x) as.data.frame(x$peaks[1:2,])))
+out$name =  rownames(out)
+out$name = unlist(lapply(strsplit(out$name, '\\.'), function(x) x[2]))
+out = out[out$intensity>0.5,]
 
-#Split wavenumbers on
-
-
-
+#Plot
+plot(wav,
+     phylosig_spectra,
+     type = 'n',
+     bty = 'n',
+     ylim = c(0,1.5),
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     ylab = 'Phylogenetic signal',
+     xlab = 'Wavenumber (cm -1)')
+for(i in 1:nrow(out)){
+  segments(out[i,]$peak, 0, out[i,]$peak, 1, col = 'gray40')
+}
+text(out$peak, rep(1, nrow(out)), out$name, srt = 90, adj = 0, col = 'gray40')
+lines(wav,
+      phylosig_spectra,
+      lwd = 1.5)
