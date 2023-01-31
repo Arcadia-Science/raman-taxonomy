@@ -1,0 +1,49 @@
+642,Tyrosine,C–C twisting
+650,Amide IV,OCN bending
+651,Guanine,Ring stretching
+700,Amide V,Out-of-plane NH bending
+728,Tryptophan,Ring breathing
+735,Adenine,Ring breathing
+748,Tryptophan,Indole ring bending
+750,Cytochrome C,Pyrrole breathing
+771,Uracil,Ring breathing
+776,Thymine,Ring breathing
+787,Cytosine,Ring breathing
+813,A-type RNA of the viroid,C–O–P–O–C symmetric stretching
+840,Polysaccharide structure,"1,4-glycosidic_link stretching"
+875,Tryptophan,out-of-plane bending of indole ring and indole CH
+951,Proteins (_-helix),CH3 symmetric stretching
+1000,Deoxyribose,C–O stretching
+1003,Carotenoid,C–CH3 deformation
+1004,Phenylalanine,Benzene ring breathing
+1043,HCO3_ in sodium bicarbonate,symmetric stretching
+1064,Lipids,Skeletal C–C stretching
+1078,Glycogen,C–C stretching
+1093,DNA,PO2_ symmetric stretching
+1123,Lipids and proteins,C–C stretching
+1155,Carotenoid,C–C stretching
+1157,Carotenoid,In-phase vibrations of the conjugated = C–C =
+1172,Tyrosine,C–H in-plane bending
+1187,Bacteriorhodopsin,C–C stretching
+1199,Tyrosine,Ring breathing
+1228,DNA,PO2_ antisymmetric stretching
+1235,Amide _,In-phase combination of the NH bending and CN stretching
+1237,Bacteriorhodopsin,C–C–H in-plane rocks
+1260,Lipids,CH2 in-plane deformation
+1267,Lipids,HC = in-plane deformation
+1300,Lipids,In-plane twisting
+1304,Lipids,CH2 deformation
+1321,Lipids,CH2 deformation
+1358,Tryptophan,Indole ring bending
+1420,Lipids,CH2 scissoring
+1420,Proteins and lipids,CH2 bending
+1440,Lipids,CH2 and CH3 deformation
+1446,Proteins and lipids,CH2 bending
+1512,Carotenoid,C=C stretching
+1517,_-Carotene,C–C stretching
+1542,Tryptophan,Indole ring stretching
+1574,Amide _,Out-of-phase combination of the NH bending and the CN stretching
+1625,Chlorophyll,Stretching of conjugated vinyl groups
+1660,Amide _,C=O stretching vibrations out-of-plane C–N stretching
+1660,Chlorophyll b,Stretching of formyl carbonyl group
+1735,PHB,C=O stretching of the ester functional group

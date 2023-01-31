@@ -160,10 +160,10 @@ plot(cumsum((pca$sdev)^2/sum(((pca$sdev)^2)))[1:100]*100,
 
 #Plot
 pred = as.data.frame(cbind(apply(taxa, 2, function(x) rep(x, each = 100))))
-cols = WGCNA::standardColors(length(unique(pred$Strain)))
-#cols = c(arcadia.pal(n = 6, name = 'Accent'), arcadia.pal(n = 6, name = 'Lighter_accents'))[1:length(unique(taxa$Genus))]
-#names(cols) = unique(taxa$Genus)
-names(cols) = unique(pred$Strain)
+#cols = WGCNA::standardColors(length(unique(pred$Strain)))
+cols = c(arcadia.pal(n = 6, name = 'Accent'), arcadia.pal(n = 6, name = 'Lighter_accents'))[1:length(unique(taxa$Genus))]
+names(cols) = unique(taxa$Genus)
+#names(cols) = unique(pred$Strain)
 #cols = cols[match(pred$Genus, names(cols))]
 cols = cols[match(pred$Strain, names(cols))]
 
@@ -214,12 +214,13 @@ bics = lapply(mods, function(x) BIC(x))
 bics = sort(unlist(bics))
 
 o = order(bics)
-names(cols) = c('Strain', 'Species', 'Genus', 'Family', 'Order', 'Class', 'Division', 'Domain')
-cols = cols[match(names(nic[o]), names(cols))]
-cols = c(cols[1], 'black', cols[2:length(cols)])
+cols = c(arcadia.pal(n = 6, name = 'Accent'), arcadia.pal(n = 6, name = 'Lighter_accents'))[1:length(bics)]
+names(cols) = c('Species', 'Strain', 'Family', 'Domain', 'Division', 'Order', 'Class', 'Genus', 'All')
+cols = cols[match(names(bics), names(cols))]
+cols[2] = 'black'
 plot(bics[o],
      pch = 20,
-     cex = 3,
+     cex = 4,
      col = cols,
      ylab = 'BIC',
      xlab = '',
@@ -254,26 +255,27 @@ for(i in 1:(ncol(pred))){
 #Plot
 m1 = unlist(lapply(res, function(y) mean(y)))
 se1 = unlist(lapply(res, function(y) plotrix::std.error(y)))
+v1 = unlist(lapply(res, function(y) var(y)))
 
-o = order(m1, decreasing = TRUE)
-cols = c(arcadia.pal(n = 6, name = 'Accent'), arcadia.pal(n = 6, name = 'Lighter_accents'))[1:length(m1)]
-names(cols) = c('Strain', 'Species', 'Genus', 'Family', 'Order', 'Class', 'Division', 'Domain')
-cols = cols[match(names(m1[o]), names(cols))]
-plot(m1[o],
+o = order(v1)
+cols = c(arcadia.pal(n = 6, name = 'Accent'), arcadia.pal(n = 6, name = 'Lighter_accents'))[1:length(v1)]
+names(cols) = c('Species', 'Strain', 'Family', 'Domain', 'Division', 'Order', 'Class', 'Genus')
+cols = cols[match(names(v1[o]), names(cols))]
+plot(v1[o],
      pch = 20,
      cex = 3,
      col = cols,
-     ylim = c(0.92, 0.97),
-     ylab = 'Cosine similarity',
+     #ylim = c(0.92, 0.97),
+     ylab = 'Cosine similarity (variance)',
      xlab = '',
      cex.lab = 1.5,
      cex.axis = 1.5,
      xaxt = 'n',
      bty = 'n')
-axis(1, 1:length(m1), names(m1)[o], cex.axis = 1.5, las = 2)
-for(i in 1:length(se1)){
-  segments(i, m1[o][i]-se1[o][i], i, m1[o][i]+se1[o][i], col = cols[i], lwd = 2)
-}
+axis(1, 1:length(v1), names(v1)[o], cex.axis = 1.5, las = 2)
+#for(i in 1:length(se1)){
+#  segments(i, m1[o][i]-se1[o][i], i, m1[o][i]+se1[o][i], col = cols[i], lwd = 2)
+#}
 
 #####################################
 #####Correlate taxonomy with pcs#####
@@ -355,9 +357,10 @@ phylosig_pcs = apply(pca$x[match(phylo$tip.label, rownames(pca$x)),], 2, functio
 
 #Phylogenetic signal of spectra
 phylosig_spectra = apply(m2[match(phylo$tip.label, rownames(m2)),], 2, function(x) phylosig(phylo, x, method = 'lambda')[1]$lambda)
+phylosig_spectra_k = apply(m2[match(phylo$tip.label, rownames(m2)),], 2, function(x) phylosig(phylo, x, method = 'K')[1])
 
 #By windows
-len = 100
+len = 25
 win = split_with_overlap(t(m2), len, len-1)[1:(ncol(m2)-len)]
 win_phy = list()
 for(i in 1:length(win)){
@@ -375,7 +378,47 @@ for(i in 1:length(win)){
 pc = unlist(lapply(win_phy, function(x) x$pca))
 mn = unlist(lapply(win_phy, function(x) x$mean))
 
-#Plot
+##Plot window-based phylogenetic signal
+bands = as.data.frame(readxl::read_xlsx('00_data/shipp_2017_raman_bands.xlsx', col_names = FALSE))
+colnames(bands) = c('wavenumber', 'end', 'molecule', 'type')
+plot(wav[1:length(mn)],
+     mn,
+     type = 'n',
+     bty = 'n',
+     ylim = c(0,0.8),
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     ylab = 'Phylogenetic signal',
+     xlab = 'Wavenumber (cm -1)')
+#for(i in 1:nrow(bands)){
+#  abline(v = bands[i,]$wavenumber, col = 'gray40')
+#}
+#text(bands$wavenumber, rep(0.5, nrow(bands)), bands$molecule, srt = 90, adj = 0, col = 'gray40')
+lines(wav[1:length(mn)],
+      mn,
+      lwd = 1.5)
+
+##Plot with common bands
+bands = as.data.frame(readxl::read_xlsx('00_data/cui_et_al_2022_raman_bands.xlsx', col_names = FALSE))
+colnames(bands) = c('wavenumber', 'molecule', 'bond')
+plot(wav,
+     phylosig_spectra,
+     type = 'n',
+     bty = 'n',
+     ylim = c(0,1.5),
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     ylab = 'Phylogenetic signal',
+     xlab = 'Wavenumber (cm -1)')
+for(i in 1:nrow(bands)){
+  abline(v = bands[i,]$wavenumber, col = 'gray40')
+}
+text(bands$wavenumber, rep(1, nrow(bands)), bands$molecule, srt = 90, adj = 0, col = 'gray40')
+lines(wav,
+      phylosig_spectra,
+      lwd = 1.5)
+
+##Plot with variance
 #Set up plot
 par(mfrow = c(2,1))
 
@@ -445,6 +488,44 @@ cophen = cophenetic.phylo(phylo)
 #Convert to three column matrix
 cophen = as.data.frame(as.table(cophen))
 
+#Get max divergence times for each taxonomic grouping
+times = matrix(ncol = 4)
+for(i in 1:nrow(cophen)){
+  for(j in 1:ncol(cophen)){
+    x = taxa2[grep(rownames(cophen)[i], 
+                   paste(taxa2$Genus, taxa2$Species, sep = '_')),][1,]
+    y = taxa2[grep(rownames(cophen)[j], 
+                   paste(taxa2$Genus, taxa2$Species, sep = '_')),][1,]
+    z = names(x)[max(which(x%in%y==FALSE))]
+    times = rbind(times, cbind(z, rownames(cophen)[i], colnames(cophen)[j], as.numeric(cophen[i,j])))
+  }
+}
+times = as.data.frame(times)
+a = max(as.numeric(times[,4]), na.rm = TRUE)/max(phylo$edge.length)
+times[,4] = as.numeric(times[,4])/a
+
+times = split(times, times[,1])
+lapply(times, function(x) mean(as.numeric(x[,4]), na.rm = TRUE))
+
+#Add taxonomic relationship
+taxa2 = cbind(taxa$Species, 
+              taxa$Genus, 
+              taxa[,4:ncol(taxa)])
+colnames(taxa2)[1] = 'Species'
+colnames(taxa2)[2] = 'Genus'
+cophen$relationship = rep(NA, nrow(cophen))
+for(i in 1:nrow(cophen)){
+  x = taxa2[grep(as.character(cophen[i,1]), 
+                 paste(taxa2$Genus, taxa2$Species, sep = '_')),][1,]
+  y = taxa2[grep(as.character(cophen[i,2]), 
+                 paste(taxa2$Genus, taxa2$Species, sep = '_')),][1,]
+  cophen$relationship[i] = names(x)[max(which(x%in%y==FALSE))]
+}
+
+#Calculate times for each taxa
+z = split(as.data.frame(cophen), cophen$relationship)
+z = unlist(lapply(z, function(x) max(x$Freq)))
+
 #Standardize to mya
 a = max(cophen$Freq)/max(phylo$edge.length)
 cophen$Freq = cophen$Freq/a
@@ -452,6 +533,15 @@ cophen$Freq = cophen$Freq/a
 #Calculate cosine similarity
 d = cosine(t(m2))
 d = as.data.frame(as.table(d))
+
+summary(lm(cophen$Freq~d$Freq))
+
+#Calculate cosine similarity for regions with phylogenetic signal
+d2 = cosine(t(m2[,which(mn>0.1)]))
+d2 = as.data.frame(as.table(d2))
+
+summary(lm(cophen$Freq~d2$Freq))
+plot(cophen$Freq, d2$Freq)
 
 #Calculate by time
 cophen_time = list()
@@ -530,6 +620,75 @@ lines(me+se, lty = 2, col = 'grey70', lwd = 1.5)
 lines(me-se, lty = 2, col = 'grey70', lwd = 1.5)
 lines(me, lwd = 2)
 axis(1, at = c(1, seq(500, 3500, 500))+36, labels = rev(seq(0, 3.5, 0.5)), cex.axis = 1.5)
+for(i in 1:length(times)){
+  abline(v = length(me) - min(times[[i]][,4]))
+  abline(v = length(me) - max(times[[i]][,4]))
+}
+
+##Spectral similarity as a function of position (by windows)
+len = 100
+win = split_with_overlap(t(m2), len, len-1)[1:(ncol(m2)-len)]
+win_cosine = list()
+for(i in 1:length(win)){
+  p = as.matrix(dist(t(win[[i]])))
+
+  win_cosine[[as.character(i)]] = unlist(as.data.frame(p))
+}
+
+win_cosine = do.call(cbind, win_cosine)
+png('~/Desktop/test.png', width = 1200, height = 400)
+image(win_cosine, xaxt = 'n', yaxt = 'n', bty = 'n')
+dev.off()
+
+#Plot
+par(mfrow = c(2,1))
+plot(wav,
+     phylosig_spectra,
+     type = 'l',
+     bty = 'n',
+     ylim = c(0,0.8),
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     ylab = 'Phylogenetic signal',
+     xlab = 'Wavenumber (cm -1)')
+image(win_cosine)
+
+#Distance to "baseline"?
+d = as.matrix(dist(m2))
+d = unlist(as.data.frame(d))
+
+out = apply(win_cosine, 2, function(x) cosine(x, d))
+
+plot(mn[1:length(out)]/max(mn), type = 'l', col = 'red')
+lines(out/max(out), type = 'l')
+
+#Time x spectral similarity relationship as a function of position
+d_win = list()
+step = 25
+for(i in seq(1, 1000-step, step)){
+  
+  #Calculate cosine distance
+  d = as.data.frame(as.table(cosine(t(m2[,i:(i+step)]))))
+  
+  phen = list()
+  for(j in 0:round(max(cophen$Freq))){
+    
+    #Filter on cophenetic distances
+    z = d[which(cophen$Freq>=j),]
+    
+    #Remove self comparisons
+    z = z[!z[,1] == z[,2],]
+    
+    #Add to list
+    phen[[as.character(j)]] = z
+  }
+  
+  #Add to list
+  d_win[[as.character(i)]] = unlist(lapply(phen, function(x) mean(x$Freq)))
+}
+
+##TO DO: Make a spectral similarity x time plot for phylogenetically conserved windows
+##TO DO: This could also be represented as a heatmap for each bin across the spectrum too, comparing the spectra of all species at that point
 
 #####################################
 #####Plot phylogeny with spectra#####
