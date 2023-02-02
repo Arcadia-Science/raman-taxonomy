@@ -485,9 +485,6 @@ axis(1, n, seq(500, 1750, 250), cex.axis = 1.5)
 #Calculate cophenic distances
 cophen = cophenetic.phylo(phylo)
 
-#Convert to three column matrix
-cophen = as.data.frame(as.table(cophen))
-
 #Get max divergence times for each taxonomic grouping
 times = matrix(ncol = 4)
 for(i in 1:nrow(cophen)){
@@ -504,8 +501,11 @@ times = as.data.frame(times)
 a = max(as.numeric(times[,4]), na.rm = TRUE)/max(phylo$edge.length)
 times[,4] = as.numeric(times[,4])/a
 
-times = split(times, times[,1])
-lapply(times, function(x) mean(as.numeric(x[,4]), na.rm = TRUE))
+times2 = split(times, times[,1])
+lapply(times2, function(x) mean(as.numeric(x[,4]), na.rm = TRUE))
+
+#Convert to three column matrix
+cophen = as.data.frame(as.table(cophen))
 
 #Add taxonomic relationship
 taxa2 = cbind(taxa$Species, 
@@ -625,8 +625,10 @@ for(i in 1:length(times)){
   abline(v = length(me) - max(times[[i]][,4]))
 }
 
-##Spectral similarity as a function of position (by windows)
-len = 100
+####################################################################
+#####Spectral similarity as a function of position (by windows)#####
+####################################################################
+len = 25
 win = split_with_overlap(t(m2), len, len-1)[1:(ncol(m2)-len)]
 win_cosine = list()
 for(i in 1:length(win)){
@@ -636,22 +638,131 @@ for(i in 1:length(win)){
 }
 
 win_cosine = do.call(cbind, win_cosine)
+
+#Sort by divergence time
+p = as.matrix(dist(t(win[[1]])))
+p = as.data.frame(as.table(p))
+
+z = as.matrix(dist(t(cophen)))
+z = as.data.frame(as.table(z))
+a = max(z$Freq)/max(phylo$edge.length)
+z$Freq = z$Freq/a
+
+p = p[match(paste(z[,1], z[,2]), paste(p[,1], p[,2])),]
+p$Freq = z$Freq
+
+win_cosine = win_cosine[order(p$Freq),]
+image(t(win_cosine), col = rev(viridis::viridis_pal(option = 'A')(100)))
+
 png('~/Desktop/test.png', width = 1200, height = 400)
-image(win_cosine, xaxt = 'n', yaxt = 'n', bty = 'n')
+image(t(win_cosine[20:nrow(win_cosine),]), xaxt = 'n', yaxt = 'n', bty = 'n')
 dev.off()
 
+png('~/Desktop/test2.png', width = 1200, height = 1200)
+heatmap(win_cosine, Colv = NA)
+dev.off()
+
+#Tree variation as a function of time
+cophen_times = list()
+for(i in 1:length(win)){
+  res = list()
+  d = as.matrix(dist(t(win[[i]])))
+  d = as.data.frame(as.table(d))
+  for(j in 0:round(max(p$Freq))){
+    
+    #Filter on cophenetic distances
+    z = d[which(p$Freq>=j),]
+    
+    #Remove self comparisons
+    z = z[!z[,1] == z[,2],]
+    
+    #Add to list
+    res[[as.character(j)]] = z
+  }
+  
+  #Calculate mean
+  p_mean = unlist(lapply(res, function(x) mean(x$Freq)))
+  #plot(p_mean, type = 'l')
+  
+  cophen_times[[as.character(i)]] = p_mean
+}
+
+plot(unlist(lapply(cophen_times, function(x) which.max(x))))
+
+#Heatmap
+time_mat = do.call(cbind, cophen_times)
+
+png('~/Desktop/spectral_divergence_time_matrix_020123.png', width = 1200, height = 400)
+image(t(time_mat), xaxt = 'n', yaxt = 'n', bty = 'n')
+dev.off()
+
+#Correlation with baseline
+apply(time_mat, 2, function(x) cor(x, p_mean, use = 'complete.obs'))
+
+###################################################################
+#####Spectral similarity in phylogenetically conserved regions#####
+###################################################################
+#Find peaks in window-based phylogenetic signal
+a = which(mn>0.01)
+idx <- c(0, cumsum(abs(diff(a)) > 2))
+
+indices = split(a, idx)
+
+split(m2,cumsum(a>0.01))
+
+#Tree variation as a function of time
+len = 25
+win = split_with_overlap(t(m2), len, len-1)[1:(ncol(m2)-len)]
+win_times = list()
+for(i in 1:length(indices)){
+  res = list()
+  
+  d = as.matrix(dist(m2[,min(indices[[i]]):max(indices[[i]])]))
+  d = as.data.frame(as.table(d))
+  for(j in 0:round(max(p$Freq))){
+    
+    #Filter on cophenetic distances
+    z = d[which(p$Freq>=j),]
+    
+    #Remove self comparisons
+    z = z[!z[,1] == z[,2],]
+    
+    #Add to list
+    res[[as.character(j)]] = z
+  }
+  
+  #Calculate mean
+  p_mean = unlist(lapply(res, function(x) mean(x$Freq)))
+  #plot(p_mean, type = 'l')
+  
+  win_times[[as.character(i)]] = p_mean
+}
+
 #Plot
-par(mfrow = c(2,1))
-plot(wav,
-     phylosig_spectra,
+cols = c(arcadia.pal(n = 6, 'Accent'), arcadia.pal(n = 6, 'Lighter_accents'))[1:length(win_times)]
+plot(1:length(win_times[[1]]),
+     win_times[[1]]/max(win_times[[1]], na.rm = TRUE),
      type = 'l',
-     bty = 'n',
-     ylim = c(0,0.8),
+     col = cols[1],
+     ylab = 'Spectral distance',
      cex.axis = 1.5,
      cex.lab = 1.5,
-     ylab = 'Phylogenetic signal',
-     xlab = 'Wavenumber (cm -1)')
-image(win_cosine)
+     xaxt = 'n',
+     bty = 'n',
+     lwd = 1.5,
+     ylim = c(0.3,1),
+     xlab = 'Million years ago')
+for(i in 2:length(win_times)){
+  lines(win_times[[i]]/max(win_times[[i]], na.rm = TRUE),
+        col = cols[i],
+        lwd = 1.5)
+}
+lines(1:length(win_times[[1]]), p_mean/max(p_mean, na.rm = TRUE), lwd = 2)
+axis(1, at = c(1, seq(500, 3500, 500))+36, labels = rev(seq(0, 3.5, 0.5)), cex.axis = 1.5)
+
+par(mfrow = c(2,1))
+plot(apply(win_cosine, 2, function(x) p$Freq[order(p$Freq)][which.max(x)]), type = 'l')
+image(t(win_cosine[20:nrow(win_cosine),]), xaxt = 'n', yaxt = 'n', bty = 'n')
 
 #Distance to "baseline"?
 d = as.matrix(dist(m2))
@@ -665,7 +776,7 @@ lines(out/max(out), type = 'l')
 #Time x spectral similarity relationship as a function of position
 d_win = list()
 step = 25
-for(i in seq(1, 1000-step, step)){
+for(i in seq(1, 1000-step, 1)){
   
   #Calculate cosine distance
   d = as.data.frame(as.table(cosine(t(m2[,i:(i+step)]))))
@@ -740,11 +851,14 @@ size = read.csv('00_data/ho_et_al_2019/ho_2019_genome_statistics.csv')
 #Match genome size matrix to order of spectral data
 size = size[match(rownames(pca$x), gsub(' ', '_', size$Genome)),]
 
+#Remove 'Streptococcus_agalactiae'
+size = size[!size$Genome == 'Streptococcus agalactiae',]
+
 #Calculate pca
 pca = prcomp(m2)
 
 #Linear model
-summary(lm(pca$x[,2]~size$media_gc_content+size$median_genome_size+size$median_protein_count))
+summary(lm(pca$x[,1]~size$media_gc_content+size$median_genome_size+size$median_protein_count))
 
 #By wavenumber
 par(mfrow = c(1,3))
@@ -791,6 +905,30 @@ gc = apply(m2, 2, function(x) minerva::mine(x, size$media_gc_content)$MIC)
 minerva::mine(phylosig_spectra, mp)
 
 mod = lm(phylosig_spectra~v+mg+mp+gc)
+
+#Linear models by window
+len = 25
+mods = list()
+for(i in 1:(ncol(m2)-len)){
+  
+  d = m2[,i:(i+len)]
+  pca = prcomp(d)
+  
+  g = summary(lm(pca$x[,1]~size$median_genome_size))[9]
+  p = summary(lm(pca$x[,1]~size$median_protein_count))[9]
+  gc = summary(lm(pca$x[,1]~size$media_gc_content))[9]
+  
+  l = list(g, p, gc)
+  names(l) = c('genome', 'protein', 'gc')
+  
+  mods[[as.character(i)]] = l
+}
+
+plot(unlist(lapply(mods, function(x) x$gc)), type = 'l', ylim = c(-0.1,0.6))
+lines(unlist(lapply(mods, function(x) x$genome)), col = 'red')
+lines(unlist(lapply(mods, function(x) x$protein)), col = 'cyan4')
+
+
 
 ################################################################
 #####Comparing bio molecule spectra to phylogenetic results#####
