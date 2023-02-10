@@ -643,6 +643,7 @@ win_cosine = do.call(cbind, win_cosine)
 p = as.matrix(dist(t(win[[1]])))
 p = as.data.frame(as.table(p))
 
+cophen = cophenetic.phylo(phylo)
 z = as.matrix(dist(t(cophen)))
 z = as.data.frame(as.table(z))
 a = max(z$Freq)/max(phylo$edge.length)
@@ -699,6 +700,44 @@ dev.off()
 #Correlation with baseline
 apply(time_mat, 2, function(x) cor(x, p_mean, use = 'complete.obs'))
 
+############################################################
+#####Robinson-Foulds distance as a function of position#####
+############################################################
+#Calculate
+len = 25
+win = split_with_overlap(t(m2), len, len-1)[1:(ncol(m2)-len)]
+win_tree = list()
+for(i in 1:length(win)){
+  z = as.phylo(nj(dist(t(win[[i]]))))
+  
+  win_tree[[as.character(i)]] = TreeDist::TreeDistance(phylo, z)
+}
+
+#Plot
+plot(wav[1:length(win_tree)],
+     unlist(win_tree), 
+     type = 'l',
+     ylab = 'Distance to genetic tree',
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     bty = 'n',
+     xlab = 'Wavenumber')
+
+#Try dropping polytomies (Klebsiella_aerogenes, Salmonella_enterica, Enterobacter_cloacae, Proteus_mirabilis, Staphylococcus_lugdunensis, Staphylococcus_aureus)
+phylo2 = keep.tip(phylo, phylo$tip.label[!phylo$tip.label%in%c("Klebsiella_aerogenes", "Salmonella_enterica", "Enterobacter_cloacae", 
+                                                               "Proteus_mirabilis", "Staphylococcus_lugdunensis", "Staphylococcus_aureus")])
+m3 = m2[match(phylo2$tip.label, rownames(m2)),]
+
+len = 25
+win = split_with_overlap(t(m3), len, len-1)[1:(ncol(m3)-len)]
+win_tree = list()
+for(i in 1:length(win)){
+  z = as.phylo(nj(dist(t(win[[i]]))))
+  
+  win_tree[[as.character(i)]] = TreeDist::TreeDistance(phylo2, z)
+}
+plot(unlist(win_tree), type = 'l')
+
 ###################################################################
 #####Spectral similarity in phylogenetically conserved regions#####
 ###################################################################
@@ -707,8 +746,11 @@ a = which(mn>0.01)
 idx <- c(0, cumsum(abs(diff(a)) > 2))
 
 indices = split(a, idx)
+bands = split(mn, idx)
 
-split(m2,cumsum(a>0.01))
+#Calculate man size of peaks
+mean(unlist(lapply(indices, function(x) length(x))))
+sd(unlist(lapply(indices, function(x) length(x))))
 
 #Tree variation as a function of time
 len = 25
@@ -738,10 +780,42 @@ for(i in 1:length(indices)){
   win_times[[as.character(i)]] = p_mean
 }
 
+#Non conserved windows
+len = 25
+win = split_with_overlap(t(m2), len, len-1)[1:(ncol(m2)-len)]
+non = list()
+for(i in 1:length(indices)){
+  res = list()
+  
+  d = as.matrix(dist(m2[,(max(indices[[i]])+1):min(indices[[i+1]]-1)]))
+  d = as.data.frame(as.table(d))
+  for(j in 0:round(max(p$Freq))){
+    
+    #Filter on cophenetic distances
+    z = d[which(p$Freq>=j),]
+    
+    #Remove self comparisons
+    z = z[!z[,1] == z[,2],]
+    
+    #Add to list
+    res[[as.character(j)]] = z
+  }
+  
+  #Calculate mean
+  p_mean = unlist(lapply(res, function(x) mean(x$Freq)))
+  #plot(p_mean, type = 'l')
+  
+  non[[as.character(i)]] = p_mean
+}
+
+#Compare max distance times between conserved and not
+w = unlist(lapply(win_times, function(x) which.max(x)))
+n = unlist(lapply(non, function(x) which.max(x)))
+
 #Plot
 cols = c(arcadia.pal(n = 6, 'Accent'), arcadia.pal(n = 6, 'Lighter_accents'))[1:length(win_times)]
 plot(1:length(win_times[[1]]),
-     win_times[[1]]/max(win_times[[1]], na.rm = TRUE),
+     win_times[[1]],
      type = 'l',
      col = cols[1],
      ylab = 'Spectral distance',
@@ -750,56 +824,19 @@ plot(1:length(win_times[[1]]),
      xaxt = 'n',
      bty = 'n',
      lwd = 1.5,
-     ylim = c(0.3,1),
+     ylim = c(0.0,0.8),
      xlab = 'Million years ago')
 for(i in 2:length(win_times)){
-  lines(win_times[[i]]/max(win_times[[i]], na.rm = TRUE),
+  lines(win_times[[i]],
         col = cols[i],
         lwd = 1.5)
 }
-lines(1:length(win_times[[1]]), p_mean/max(p_mean, na.rm = TRUE), lwd = 2)
+lines(1:length(win_times[[1]]), p_mean, lwd = 2)
 axis(1, at = c(1, seq(500, 3500, 500))+36, labels = rev(seq(0, 3.5, 0.5)), cex.axis = 1.5)
 
 par(mfrow = c(2,1))
 plot(apply(win_cosine, 2, function(x) p$Freq[order(p$Freq)][which.max(x)]), type = 'l')
 image(t(win_cosine[20:nrow(win_cosine),]), xaxt = 'n', yaxt = 'n', bty = 'n')
-
-#Distance to "baseline"?
-d = as.matrix(dist(m2))
-d = unlist(as.data.frame(d))
-
-out = apply(win_cosine, 2, function(x) cosine(x, d))
-
-plot(mn[1:length(out)]/max(mn), type = 'l', col = 'red')
-lines(out/max(out), type = 'l')
-
-#Time x spectral similarity relationship as a function of position
-d_win = list()
-step = 25
-for(i in seq(1, 1000-step, 1)){
-  
-  #Calculate cosine distance
-  d = as.data.frame(as.table(cosine(t(m2[,i:(i+step)]))))
-  
-  phen = list()
-  for(j in 0:round(max(cophen$Freq))){
-    
-    #Filter on cophenetic distances
-    z = d[which(cophen$Freq>=j),]
-    
-    #Remove self comparisons
-    z = z[!z[,1] == z[,2],]
-    
-    #Add to list
-    phen[[as.character(j)]] = z
-  }
-  
-  #Add to list
-  d_win[[as.character(i)]] = unlist(lapply(phen, function(x) mean(x$Freq)))
-}
-
-##TO DO: Make a spectral similarity x time plot for phylogenetically conserved windows
-##TO DO: This could also be represented as a heatmap for each bin across the spectrum too, comparing the spectra of all species at that point
 
 #####################################
 #####Plot phylogeny with spectra#####
@@ -846,7 +883,12 @@ for(i in 1:length(ord)){
 #####Compare spectra to genome size#####
 ########################################
 #Load genome sizes
-size = read.csv('00_data/ho_et_al_2019/ho_2019_genome_statistics.csv')
+#size = read.csv('00_data/ho_et_al_2019/ho_2019_genome_statistics.csv')
+size = as.data.frame(read.csv('00_data/ho_et_al_2019/ho_2019_expanded_genome_statistics.csv'))
+size = as.data.frame(apply(size, 2, function(x) gsub('\\,', '', x)))
+
+#Calculate pca
+pca = prcomp(m2)
 
 #Match genome size matrix to order of spectral data
 size = size[match(rownames(pca$x), gsub(' ', '_', size$Genome)),]
@@ -854,11 +896,11 @@ size = size[match(rownames(pca$x), gsub(' ', '_', size$Genome)),]
 #Remove 'Streptococcus_agalactiae'
 size = size[!size$Genome == 'Streptococcus agalactiae',]
 
-#Calculate pca
-pca = prcomp(m2)
-
 #Linear model
-summary(lm(pca$x[,1]~size$media_gc_content+size$median_genome_size+size$median_protein_count))
+#summary(lm(pca$x[,1]~size$media_gc_content+size$median_genome_size+size$median_protein_count))
+apply(size[,2:ncol(size)], 2, function(x) cor(as.numeric(x), as.numeric(pca$x[,1]), use = 'complete.obs'))
+
+summary(lm(pca$x[,1]~data.matrix(size[,2:ncol(size)])))
 
 #By wavenumber
 par(mfrow = c(1,3))
@@ -914,20 +956,62 @@ for(i in 1:(ncol(m2)-len)){
   d = m2[,i:(i+len)]
   pca = prcomp(d)
   
-  g = summary(lm(pca$x[,1]~size$median_genome_size))[9]
-  p = summary(lm(pca$x[,1]~size$median_protein_count))[9]
-  gc = summary(lm(pca$x[,1]~size$media_gc_content))[9]
+  o = apply(size[,2:ncol(size)], 2, function(x) summary(lm(pca$x[,1]~as.numeric(x)))[9])
   
-  l = list(g, p, gc)
-  names(l) = c('genome', 'protein', 'gc')
-  
-  mods[[as.character(i)]] = l
+  mods[[as.character(i)]] = o
 }
 
-plot(unlist(lapply(mods, function(x) x$gc)), type = 'l', ylim = c(-0.1,0.6))
-lines(unlist(lapply(mods, function(x) x$genome)), col = 'red')
-lines(unlist(lapply(mods, function(x) x$protein)), col = 'cyan4')
+plot(wav[1:length(mods)], unlist(lapply(mods, function(x) x$GC.)), type = 'l', ylim = c(-0.1,1))
+lines(wav[1:length(mods)], unlist(lapply(mods, function(x) x$Protein)), col = 'red')
+lines(wav[1:length(mods)], unlist(lapply(mods, function(x) x$Size..Mb.)), col = 'cyan4')
+lines(wav[1:length(mods)], unlist(lapply(mods, function(x) x$rRNA)), col = 'gold4')
 
+#Plot with phylogenetic signal
+plot(wav[1:length(mn)],
+     mn,
+     type = 'l',
+     bty = 'n',
+     ylim = c(-0.1,0.8),
+     cex.axis = 1.5,
+     cex.lab = 1.5,
+     ylab = 'Phylogenetic signal',
+     xlab = 'Wavenumber (cm -1)')
+lines(wav[1:length(mn)],
+      unlist(lapply(mods, function(x) x$GC.)),
+      col = 'red')
+
+#Predict phylogenetic signal from genomic feature models
+mod = lm(mn~unlist(lapply(mods, function(x) x$Size..Mb.))+unlist(lapply(mods, function(x) x$GC.))+unlist(lapply(mods, function(x) x$Protein))+
+            unlist(lapply(mods, function(x) x$rRNA))+unlist(lapply(mods, function(x) x$tRNA))+unlist(lapply(mods, function(x) x$Other.RNA))+
+            unlist(lapply(mods, function(x) x$Gene))+unlist(lapply(mods, function(x) x$Pseudogene)))
+
+#Plot t-values
+ts = summary(mod)[4][[1]][,3]
+names(ts) = c("Intercept", 'Genome size', 'GC', 'Protein #', 'rRNA #', 'tRNA #', 'Other RNA #', 'Gene #', 'Pseudogene #')
+barplot(ts[2:length(ts)], 
+        ylab = 't-value', 
+        las = 2,
+        cex.lab = 1.5,
+        cex.axis = 1.5,
+        col = 'gray80',
+        border = 'gray80')
+
+plot(mn, mod$fitted.values)
+
+cors = c()
+for(i in 1:length(mods[[1]])){
+  cors = c(cors, cor(mn, unlist(lapply(mods, function(x) x[i]))))
+}
+names(cors) = names(mods[[1]])
+
+barplot(cors,
+     ylim = c(-0.8,0.8),
+     las = 2,
+     ylab = 'Correlation coefficient',
+     cex.lab = 1.5,
+     cex.axis = 1.5,
+     col = 'gray80',
+     border = 'gray80')
 
 
 ################################################################
