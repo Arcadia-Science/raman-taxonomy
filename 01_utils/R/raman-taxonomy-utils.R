@@ -1,8 +1,6 @@
 library(reticulate)
-library(umap)
 library(gplots)
 library(plotrix)
-library(RColorBrewer)
 library(lsa)
 library(ape)
 library(phytools)
