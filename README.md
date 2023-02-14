@@ -15,7 +15,7 @@ Notebooks containing expanded methods and the code + analyses for generating all
 `pracma v2.4.2`<br>
 `hyperSpec v0.100.0`<br>
 `xml v2_1.3.3`<br>
-`ggplot v2_3.4.0<br>
+`ggplot v2_3.4.0`<br>
 `lattice v0.20-45`<br>
 `TreeDist v2.5.0`<br>
 `ArcadiaColorBrewer v0.0.0.9000`<br>
