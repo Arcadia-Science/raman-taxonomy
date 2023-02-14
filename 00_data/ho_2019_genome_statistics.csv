@@ -1,0 +1,21 @@
+Genome,median_genome_size,median_protein_count,media_gc_content
+Candida albicans,14.6999,6271,33.6
+Candida glabrata,12.4132,5256,38.6
+Klebsiella aerogenes,5.26068,4837,55
+Escherichia coli,5.11174,4725,50.6
+Enterococcus faecium,2.92265,2725,37.8014
+Enterococcus faecalis,2.96381,2765,37.4
+Enterobacter cloacae,5.06168,4710,55
+Klebsiella pneumoniae,5.59628,5300,57.1596
+Proteus mirabilis,4.01314,3565,38.9
+Pseudomonas aeruginosa,6.63399,6088,66.2
+Staphylococcus aureus,2.82782,2675,32.7
+Salmonella enterica,4.81684,4501,52.1
+Staphylococcus epidermidis,2.50584,2268,32
+Staphylococcus lugdunensis,2.57173,2344,33.7
+Serratia marcescens,5.22621,4848,59.7
+Streptococcus pneumoniae,2.08598,1954,39.6
+Streptococcus sanguinis,2.36222,2231,43.2
+Streptococcus pyogenes,1.79141,1664,38.4
+Streptococcus agalactiae,2.08293,1989,35.4
+Streptococcus dysgalactiae,2.14375,1970,39.4

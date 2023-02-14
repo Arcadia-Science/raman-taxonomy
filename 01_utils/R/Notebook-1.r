@@ -5,22 +5,22 @@ setwd(here::here())
 suppressPackageStartupMessages(source('01_utils/R/raman-taxonomy-utils.R'))
 
 # Load Ho et al. 2019 spectral data
-x <- np$load("00_data/ho_et_al_2019/X_finetune.npy")
+x <- np$load("00_data/X_finetune.npy")
 
 # Reverse to ensure wavenumbers are ascending
 x <- x[, ncol(x):1]
 
 # Load config (contains strain name info, etc.)
-config <- source_python("00_data/ho_et_al_2019/config.py")
+config <- source_python("00_data/config.py")
 
 # Get names by ordering strains (have to +1 order since its 0 indexed as in python; R wants to start with 1)
 n <- unlist(STRAINS)
 
 # Load wavenumbers
-wav <- rev(np$load("00_data/ho_et_al_2019/wavenumbers.npy"))
+wav <- rev(np$load("00_data/wavenumbers.npy"))
 
 # Load taxonomic groups (collected from NCBI)
-taxa <- read.csv("00_data/ho_et_al_2019/taxonomic_groups.csv")
+taxa <- read.csv("00_data/taxonomic_groups.csv")
 
 # Calculate the mean spectra for all strains by splitting on strain and extracting column means
 m <- lapply(split(as.data.frame(x), y), function(z)
@@ -239,7 +239,7 @@ axis(1,
      las = 2)
 
 phylo <-
-  read.newick("00_data/ho_et_al_2019/ho_2019_species_list_for_timetree.nwk")
+  read.newick("00_data/ho_2019_species_list_for_timetree.nwk")
 
 phylo <- drop.tip(phylo, "Streptococcus_agalactiae")
 
@@ -460,7 +460,7 @@ plot(
 
 # Load genome statistics
 size <-
-  read.csv("00_data/ho_et_al_2019/ho_2019_expanded_genome_statistics.csv")
+  read.csv("00_data/ho_2019_expanded_genome_statistics.csv")
 
 # Clean and convert to data frame
 size <-
