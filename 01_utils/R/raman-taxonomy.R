@@ -998,6 +998,7 @@ barplot(ts[2:length(ts)],
 
 plot(mn, mod$fitted.values)
 
+#Correlate with phylogenetic signal
 cors = c()
 for(i in 1:length(mods[[1]])){
   cors = c(cors, cor(mn, unlist(lapply(mods, function(x) x[i]))))
