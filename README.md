@@ -2,7 +2,7 @@
 
 This repository contains analysis code to accompany the publication 'Identifying the phylogenetic utility of Raman spectra'.<br> 
 
-Notebooks containing expanded methods and the code + analyses for generating all figures in the publication can be run in Binder:
+Notebooks containing expanded methods and the code + analyses for generating all figures in the publication can be run in Binder: <br>
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Arcadia-Science/raman-taxonomy/HEAD)
 
 ## Directory structure
