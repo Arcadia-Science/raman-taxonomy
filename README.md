@@ -31,6 +31,11 @@ You're able to download files from your work before the instance is shut down if
 [01_notebooks/](01_notebooks/) Jupyter notebooks outlining the full suite of analyses presented in the pub.<br>
 [02_outputs/](02_outputs/) Outputs associated with the pub.<br>
 
+## Data
+
+TODO: Add a description of how you acquired the NCBI data, Ho et al data and the timetree data.
+TODO: For the Ho et al, data maybe talk about why this dataset and its relevance/importance.
+
 ## R packages and versions used in this repo:
 
 `pracma v2.4.2` <br/>
