@@ -1,15 +1,15 @@
 # raman-taxonomy
 
-This repository contains analysis code to accompany the publication 'Identifying the phylogenetic utility of Raman spectra'.<br> 
+This repository contains analysis code to accompany the publication 'Identifying the phylogenetic utility of Raman spectra'.<br>
 
 Notebooks containing expanded methods and the code + analyses for generating all figures in the publication can be run in Binder: <br>
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Arcadia-Science/raman-taxonomy/HEAD)
 
 ## Directory structure
 
-`00_data/` Raman spectra and associated metadata.<br>
-`01_utils/` .R code necessary to run the analyses presented in the pub.<br>
-`02_notebooks/` Jupyter notebooks outlining the full suite of analyses presented in the pub.<br>
+[00_data/](00_data/) Raman spectra and associated metadata.<br>
+[01_notebooks/](01_notebooks/) Jupyter notebooks outlining the full suite of analyses presented in the pub.<br>
+[02_outputs/](02_outputs/) Outputs associated with the pub.<br>
 
 ## R packages and versions used in this repo:
 
@@ -29,6 +29,6 @@ Notebooks containing expanded methods and the code + analyses for generating all
 `SnowballC v0.7.0`<br>
 `plotrix v3.8-2`<br>
 `gplots v3.1.3`<br>
-`reticulate v1.27`<br>    
+`reticulate v1.27`<br>
 
-![github_front_page_figure](https://github.com/Arcadia-Science/raman-taxonomy/blob/main/fig_1.png)
+![github_front_page_figure](fig_1.png)
