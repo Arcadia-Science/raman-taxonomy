@@ -3,7 +3,7 @@
 This repository contains analysis code to accompany the publication 'Identifying the phylogenetic utility of Raman spectra'.<br>
 
 Notebooks containing expanded methods and the code + analyses for generating all figures in the publication can be run in Binder: <br>
-[![Binder](https://aws-uswest2-binder.pangeo.io/badge_logo.svg)](https://aws-uswest2-binder.pangeo.io/v2/gh/Arcadia-Science/raman-taxonomy/main)
+[![Binder](https://aws-uswest2-binder.pangeo.io/badge_logo.svg)](https://aws-uswest2-binder.pangeo.io/v2/gh/Arcadia-Science/raman-taxonomy/fmc/improvements)
 
 Binder is a service that turns a Git repo into a collection of interactive notebooks that can be executed on a temporary cloud machine.
 Binder is currently free, so there is no cost to using it!
