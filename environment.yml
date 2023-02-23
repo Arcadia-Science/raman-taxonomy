@@ -1,4 +1,3 @@
 name: stats
 dependencies:
   - numpy
-  - pandas
