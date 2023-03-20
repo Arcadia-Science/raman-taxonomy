@@ -15,6 +15,8 @@ mamba activate raman-taxonomy
 
 Following this, you can run the Jupyter notebook as usual.
 
+**Note:** The conda environment has been tested with a Mac OSX running the Intel x64 architecture. While most packages should be available on Linux distributions, not all packages are available on the new Apple M1/M2 ARM64 architecture.
+
 ## Directory structure
 
 [00_data/](00_data/) Raman spectra and associated metadata.<br>
