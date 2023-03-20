@@ -38,8 +38,8 @@ TODO: For the Ho et al, data maybe talk about why this dataset and its relevance
 
 ## R packages and versions used in this repo:
 
-`TreeDist v2.5.0` <br/>
-`ArcadiaColorBrewer v0.0.0.9000` <br/>
+`TreeDist v2.6.0` <br/>
+`ArcadiaColorBrewer@c6cea41` <br/>
 `scales v1.2.1` <br/>
 `phytools v1.2-0` <br/>
 `ape v3.4.1` <br/>
