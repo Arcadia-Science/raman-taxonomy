@@ -25,8 +25,11 @@ Following this, you can run the Jupyter notebook as usual.
 
 ## Data
 
-TODO: Add a description of how you acquired the NCBI data, Ho et al data and the timetree data.
-TODO: For the Ho et al, data maybe talk about why this dataset and its relevance/importance.
+Raman spectra data from [Ho et al. 2019](https://www.nature.com/articles/s41467-019-12898-9) were acquired from the [link](https://www.dropbox.com/sh/gmgduvzyl5tken6/AABtSWXWPjoUBkKyC2e7Ag6Da?dl=0) provided with the original publication. The taxonomic breadth and sample sizes (n=100/strain) led us to decide on using this dataset for these exploratory analyses.
+
+Taxonomic classifications were obtained by searching for each species on the [NCBI Taxonomy Database](https://www.ncbi.nlm.nih.gov/taxonomy).
+
+The time-calibrated tree was downloaded from [timetree.org](timetree.org) by querying species names.
 
 ## R packages and versions used in this repo:
 
