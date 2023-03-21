@@ -1,3 +1,16 @@
-name: stats
+name: raman-taxonomy
+channels:
+  - conda-forge
 dependencies:
-  - numpy
+  - python=3.9
+  - numpy=1.23.5
+  - r-base=4.1.1
+  - r-plotrix=3.8_2
+  - r-reticulate=1.27
+  - r-here=1.0.1
+  - r-lsa=0.73.3
+  - r-ape=5.6_2
+  - r-phytools=1.2-0
+  - r-treedist=2.6.0
+  - r-scales=1.2.0
+  - r-remotes=2.4.2
